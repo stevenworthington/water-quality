@@ -10,7 +10,7 @@ ipak <- function(pkg){
     sapply(pkg, require, character.only = TRUE)
 }
 
-packages <- c("janitor", "tidyverse")
+packages <- c("janitor", "lubridate", "tidyverse")
 ipak(packages)
 
 
@@ -113,15 +113,14 @@ sort(missing, dec=TRUE) %>% round()
 ####################################################################################
 # merge in environmental variables by date
 
-load("data_cleaned/dat_all_day_tempC_avg.Rdata")
-load("data_cleaned/dat_all_day_relhumid_avg.Rdata")
-load("data_cleaned/dat_all_day_precip2_mm.Rdata")
+load("data_cleaned/arima_daily_tempC_avg.Rdata")
+load("data_cleaned/arima_daily_relhumid_avg.Rdata")
+load("data_cleaned/arima_daily_precip2_mm.Rdata")
 
-dat <- merge(dat, dat_all_day_tempC_avg, by = c("date", "dayofyear"), all.x = TRUE)
-dat <- merge(dat, dat_all_day_relhumid_avg, by = c("date", "dayofyear"), all.x = TRUE)
-dat <- merge(dat, dat_all_day_precip2_mm, by = c("date", "dayofyear"), all.x = TRUE)
+dat <- merge(dat, arima_daily_tempC_avg, by = c("date", "dayofyear"), all.x = TRUE)
+dat <- merge(dat, arima_daily_relhumid_avg, by = c("date", "dayofyear"), all.x = TRUE)
+dat <- merge(dat, arima_daily_precip2_mm, by = c("date", "dayofyear"), all.x = TRUE)
 
-str(dat)
 
 ####################################################################################
 # predictors
@@ -205,12 +204,12 @@ enough_water_predictors <- "functionalinferred"
 enough_water_vars <- c(enough_water_response, enough_water_predictors, predictor_vars)
 
 # imputation model
-all_vars <- Reduce(union, list(predictor_vars, "functionalinferred", "ttc" , "x3_6_enoughwater")) # 44
+all_vars <- Reduce(union, list(predictor_vars, "functionalinferred", "ttc" , "x3_6_enoughwater")) # 43
 
 # save output
 save(dat, 
         all_vars,
         predictor_vars,
-        file = "cleaned_data.Rdata", 
+        file = "data_cleaned/cleaned_data.Rdata", 
         compress = "gzip")
 

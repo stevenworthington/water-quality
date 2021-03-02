@@ -15,6 +15,13 @@ ipak(packages)
 
 
 ################################################################
+# load cleaned data
+
+setwd("~/Documents/IQSS/water-quality")
+load("data_cleaned/cleaned_data.Rdata")
+
+
+################################################################
 # multiple imputation (mice) with x2_1_responsible reference at level 2
 
 # change ref level for x2_1_responsible

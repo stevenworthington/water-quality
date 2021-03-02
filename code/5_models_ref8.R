@@ -15,6 +15,15 @@ ipak(packages)
 
 
 ####################################################################################
+# load data
+
+setwd("~/Documents/IQSS/water-quality")
+
+load("data_cleaned/cleaned_data.Rdata")
+load("data_cleaned/mice_imp8_data.Rdata")
+
+
+####################################################################################
 # set up predictor design matrix
  
 design_matrix <- function(dat, xvars = predictor_vars) {
@@ -28,7 +37,6 @@ design_matrix <- function(dat, xvars = predictor_vars) {
 	return(X_mat)
 }
 
-load("data_cleaned/mice_imp8_data.Rdata")
 X_mat8_list <- lapply(imp8_list, design_matrix)
 
 

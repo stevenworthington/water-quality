@@ -10,20 +10,13 @@ ipak <- function(pkg){
     sapply(pkg, require, character.only = TRUE)
 }
 
-packages <- c("parallel", "stringi", "lubridate", "forecast", "data.table", "tidyverse")
+packages <- c("stringi", "lubridate", "forecast", "data.table", "tidyverse")
 ipak(packages)
 
 
 ################################################################
-# do computations with multiple processors
-
-# number of cores: 
-nc <- detectCores() 
-# create clusters 
-cl <- makeCluster(rep("localhost", nc))
-
-# -------------------------------------------------------------------------------------------------------
 setwd("~/Documents/IQSS/water-quality")
+
 dat <- fread("data_raw/TAHMOGuluweather2018_15min.csv")
 colnames(dat) <- c("time", "precip_mm",  "precip2_mm",  "relhumid_avg",
                                "tempC_avg", "tempC_max", "tempC_min")
@@ -42,11 +35,13 @@ setDF(dat)
 
 # -------------------------------------------------------------------------------------------------------
 # plot week
+
 dat_week <- dat %>%
     group_by(month, week) %>%
     summarize_all(mean, na.rm = TRUE)
 
-dat_week_long <- reshape2::melt(dat_week, id.vars = c("time", "month", "week", "day"))
+dat_week_long <- dat_week %>% 
+    pivot_longer(cols = c("precip_mm", "precip2_mm", "relhumid_avg", "tempC_avg", "tempC_max", "tempC_min"), names_to = "variable")
 
 grid <- expand.grid(month.name, 1:5)
 grid <- grid[order(grid$Var1), ]
@@ -68,12 +63,14 @@ plot(temp)
 
 # -------------------------------------------------------------------------------------------------------
 # plot day
+
 dat_day <- dat %>%
     group_by(month, week, day) %>%
     summarize_all(mean, na.rm = TRUE)
 
-dat_day_long <- reshape2::melt(dat_day, id.vars = c("time", "month", "week", "day"))
-
+dat_day_long <- dat_day %>% 
+    pivot_longer(cols = c("precip_mm", "precip2_mm", "relhumid_avg", "tempC_avg", "tempC_max", "tempC_min"), names_to = "variable")
+    
 ggplot(dat_day_long, aes(x = day, y = value, group = 1)) +
     geom_line() +
     geom_smooth() +
@@ -82,8 +79,10 @@ ggplot(dat_day_long, aes(x = day, y = value, group = 1)) +
 
 # -------------------------------------------------------------------------------------------------------
 # plot time
-dat_time <- reshape2::melt(dat, id.vars = "time")
 
+dat_time <- dat %>% 
+    pivot_longer(cols = c("precip_mm", "precip2_mm", "relhumid_avg", "tempC_avg", "tempC_max", "tempC_min"), names_to = "variable")
+    
 ggplot(dat_time, aes(x = time, y = value)) +
     geom_path() +
     facet_wrap(~ variable, scales = "free_y") +
@@ -117,18 +116,18 @@ newdat_relhumid_avg <- data.frame(
     relhumid_avg = arima_forecast_relhumid_avg$mean[-c(1:2)]
 )
  
-dat_all_relhumid_avg <- rbind(dat[, c("time", "relhumid_avg")], newdat_relhumid_avg)
+arima_relhumid_avg <- rbind(dat[, c("time", "relhumid_avg")], newdat_relhumid_avg)
     
-dat_all_day_relhumid_avg <- dat_all_relhumid_avg %>%
+arima_daily_relhumid_avg <- arima_relhumid_avg %>%
     mutate(day = yday(time),
                    date = date(time),
                    dayofyear = yday(date)) %>%
     group_by(day) %>%
     summarize_all(mean, na.rm = TRUE)
 
-save(dat_all_day_relhumid_avg, file = "data_cleaned/dat_all_day_relhumid_avg.Rdata")
+save(arima_daily_relhumid_avg, file = "data_cleaned/arima_daily_relhumid_avg.Rdata")
 
-arima_relhumid_avg <- ggplot(dat_all_day_relhumid_avg, aes(x = day, y = relhumid_avg, group = 1)) +
+arima_relhumid_avg <- ggplot(arima_daily_relhumid_avg, aes(x = day, y = relhumid_avg, group = 1)) +
     geom_line() +
     geom_vline(xintercept = 202, linetype = "dashed", color = "darkred")+
     geom_smooth() +
@@ -157,18 +156,18 @@ newdat_tempC_avg <- data.frame(
     tempC_avg = arima_forecast_tempC_avg$mean[-c(1:2)]
 )
  
-dat_all_tempC_avg <- rbind(dat[, c("time", "tempC_avg")], newdat_tempC_avg)
+arima_tempC_avg <- rbind(dat[, c("time", "tempC_avg")], newdat_tempC_avg)
     
-dat_all_day_tempC_avg <- dat_all_tempC_avg %>%
+arima_daily_tempC_avg <- arima_tempC_avg %>%
     mutate(day = yday(time),
                    date = date(time),
                    dayofyear = yday(date)) %>%
     group_by(day) %>%
     summarize_all(mean, na.rm = TRUE)
 
-save(dat_all_day_tempC_avg, file = "data_cleaned/dat_all_day_tempC_avg.Rdata")
+save(arima_daily_tempC_avg, file = "data_cleaned/arima_daily_tempC_avg.Rdata")
 
-arima_tempC_avg <- ggplot(dat_all_day_tempC_avg, aes(x = day, y = tempC_avg, group = 1)) +
+arima_tempC_avg <- ggplot(arima_daily_tempC_avg, aes(x = day, y = tempC_avg, group = 1)) +
     geom_line() +
     geom_vline(xintercept = 202, linetype = "dashed", color = "darkred")+
     geom_smooth() +
@@ -196,18 +195,18 @@ newdat_precip2_mm <- data.frame(
     precip2_mm = arima_forecast_precip2_mm$mean[-c(1:2)]
 )
  
-dat_all_precip2_mm <- rbind(dat[, c("time", "precip2_mm")], newdat_precip2_mm)
+arima_precip2_mm <- rbind(dat[, c("time", "precip2_mm")], newdat_precip2_mm)
     
-dat_all_day_precip2_mm <- dat_all_precip2_mm %>%
+arima_daily_precip2_mm <- arima_precip2_mm %>%
     mutate(day = yday(time),
                    date = date(time),
                    dayofyear = yday(date)) %>%
     group_by(day) %>%
     summarize_all(mean, na.rm = TRUE)
 
-save(dat_all_day_precip2_mm, file = "data_cleaned/dat_all_day_precip2_mm.Rdata")
+save(arima_daily_precip2_mm, file = "data_cleaned/arima_daily_precip2_mm.Rdata")
 
-arima_precip2_mm <- ggplot(dat_all_day_precip2_mm, aes(x = day, y = precip2_mm, group = 1)) +
+arima_precip2_mm <- ggplot(arima_daily_precip2_mm, aes(x = day, y = precip2_mm, group = 1)) +
     geom_line() +
     geom_vline(xintercept = 202, linetype = "dashed", color = "darkred")+
     geom_smooth() +

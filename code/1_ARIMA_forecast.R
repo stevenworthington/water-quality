@@ -10,7 +10,7 @@ ipak <- function(pkg){
     sapply(pkg, require, character.only = TRUE)
 }
 
-packages <- c("stringi", "lubridate", "forecast", "data.table", "tidyverse")
+packages <- c("stringi", "lubridate", "forecast", "data.table", "tibbletime", "tidyverse")
 ipak(packages)
 
 
@@ -32,6 +32,11 @@ dat <- dat %>%
 setDF(dat)
 
 # str(dat)
+
+
+################################################################
+################################################################
+# plots
 
 # -------------------------------------------------------------------------------------------------------
 # plot week
@@ -88,8 +93,10 @@ ggplot(dat_time, aes(x = time, y = value)) +
     facet_wrap(~ variable, scales = "free_y") +
     theme_classic() 
 
+
 ################################################################
-# ARIMA
+################################################################
+# ARIMA models
 
 # ----------------------------------------
 # relhumid_avg
@@ -98,118 +105,154 @@ ggplot(dat_time, aes(x = time, y = value)) +
 # 672 = 15mins*24hours*7days = 1 week
 # 96 = 15mins*24hours = 1 day
 
+# multiseasonal time series data object
 mseries_relhumid_avg <- msts(dat[, "relhumid_avg"], seasonal.periods = c(96, 672))
 
+# estimate ARIMA model with seasonality
 z_relhumid_avg <- fourier(mseries_relhumid_avg, K = c(10, 10))
 arima_fit_relhumid_avg <- auto.arima(mseries_relhumid_avg, xreg = z_relhumid_avg, ic = "aicc", lambda = "auto", biasadj = TRUE,
     seasonal = FALSE, stepwise = TRUE, stationary = TRUE, approximation = TRUE, parallel = FALSE)
-    
+
+# forecast ARIMA model    
 zf_relhumid_avg <- fourier(mseries_relhumid_avg, K = c(10, 10), h = 864)    
 arima_forecast_relhumid_avg <- forecast(arima_fit_relhumid_avg, xreg = zf_relhumid_avg, h = 864)
 plot(arima_forecast_relhumid_avg)
 
-# need to append this to original the get daily average 
+# put forecast in a data frame with time variable 
 newdat_relhumid_avg <- data.frame(  
     time = seq(from = parse_date_time("07-23-2018 00:30", order = "mdy HM"),
                to = parse_date_time("07-31-2018 23:45", order = "mdy HM"), 
                by = "15 min"),
     relhumid_avg = arima_forecast_relhumid_avg$mean[-c(1:2)]
 )
- 
+
+# need to append forecast to original data to the get daily average 
 arima_relhumid_avg <- rbind(dat[, c("time", "relhumid_avg")], newdat_relhumid_avg)
-    
+
+# create a function for the rolling cumulative sum
+rollsum_3 <- tibbletime::rollify(sum, window = 3)
+
+# create daily averages and cumulative sums over a lagged 3 day window   
 arima_daily_relhumid_avg <- arima_relhumid_avg %>%
     mutate(day = yday(time),
-                   date = date(time),
-                   dayofyear = yday(date)) %>%
+                date = date(time),
+                dayofyear = yday(date)) %>%
     group_by(day) %>%
-    summarize_all(mean, na.rm = TRUE)
+    summarize_all(mean, na.rm = TRUE) %>%
+    mutate(relhumid_avg_lag = lag(relhumid_avg),
+                relhumid_avg_cumsum = rollsum_3(relhumid_avg_lag))
 
+# save
 save(arima_daily_relhumid_avg, file = "data_cleaned/arima_daily_relhumid_avg.Rdata")
 
-arima_relhumid_avg <- ggplot(arima_daily_relhumid_avg, aes(x = day, y = relhumid_avg, group = 1)) +
+# plot daily average
+plot_arima_relhumid_avg <- ggplot(arima_daily_relhumid_avg, aes(x = day, y = relhumid_avg_cumsum, group = 1)) +
     geom_line() +
     geom_vline(xintercept = 202, linetype = "dashed", color = "darkred")+
     geom_smooth() +
     theme_classic() 
-ggsave(arima_relhumid_avg, file = "results/arima_relhumid_avg.pdf", height = 3, width = 7)    
+ggsave(plot_arima_relhumid_avg, file = "results/arima_relhumid_avg_cumsum.pdf", height = 3, width = 7)    
 
 
 # -------------------------------------------------------------------------------------------------------
 # tempC_avg
 
+# multiseasonal time series data object
 mseries_tempC_avg <- msts(dat[, "tempC_avg"], seasonal.periods = c(96, 672))
 
+# estimate ARIMA model with seasonality
 z_tempC_avg <- fourier(mseries_tempC_avg, K = c(10, 10))
 arima_fit_tempC_avg <- auto.arima(mseries_tempC_avg, xreg = z_tempC_avg, , ic = "aicc", lambda = "auto", biasadj = TRUE,
     seasonal = FALSE, stepwise = TRUE, stationary = TRUE, approximation = TRUE, parallel = FALSE)
 
+# forecast ARIMA model
 zf_tempC_avg <- fourier(mseries_tempC_avg, K = c(10, 10), h = 864)    
 arima_forecast_tempC_avg <- forecast(arima_fit_tempC_avg, xreg = zf_tempC_avg, h = 864)
 plot(arima_forecast_tempC_avg)
  
-# need to append this to original the get daily average 
+# put forecast in a data frame with time variable 
 newdat_tempC_avg <- data.frame(  
     time = seq(from = parse_date_time("07-23-2018 00:30", order = "mdy HM"),
                to = parse_date_time("07-31-2018 23:45", order = "mdy HM"), 
                by = "15 min"),
     tempC_avg = arima_forecast_tempC_avg$mean[-c(1:2)]
 )
- 
+
+# need to append forecast to original data to the get daily average
 arima_tempC_avg <- rbind(dat[, c("time", "tempC_avg")], newdat_tempC_avg)
-    
+
+# create a function for the rolling cumulative sum
+rollsum_3 <- tibbletime::rollify(sum, window = 3)
+
+# create daily averages and cumulative sums over a 3 lagged day window    
 arima_daily_tempC_avg <- arima_tempC_avg %>%
     mutate(day = yday(time),
                    date = date(time),
                    dayofyear = yday(date)) %>%
     group_by(day) %>%
-    summarize_all(mean, na.rm = TRUE)
+    summarize_all(mean, na.rm = TRUE) %>%
+    mutate(tempC_avg_lag = lag(tempC_avg),
+                tempC_avg_cumsum = rollsum_3(tempC_avg_lag))
 
+# save
 save(arima_daily_tempC_avg, file = "data_cleaned/arima_daily_tempC_avg.Rdata")
 
-arima_tempC_avg <- ggplot(arima_daily_tempC_avg, aes(x = day, y = tempC_avg, group = 1)) +
+# plot daily average
+plot_arima_tempC_avg <- ggplot(arima_daily_tempC_avg, aes(x = day, y = tempC_avg_cumsum, group = 1)) +
     geom_line() +
     geom_vline(xintercept = 202, linetype = "dashed", color = "darkred")+
     geom_smooth() +
     theme_classic() 
-ggsave(arima_tempC_avg, file = "results/arima_tempC_avg.pdf", height = 3, width = 7)    
+ggsave(plot_arima_tempC_avg, file = "results/arima_tempC_avg_cumsum.pdf", height = 3, width = 7)    
 
 
 # -------------------------------------------------------------------------------------------------------
 # precip2_mm
 
+# multiseasonal time series data object
 mseries_precip2_mm <- msts(dat[, "precip2_mm"], seasonal.periods = c(96, 672))
 
+# estimate ARIMA model with seasonality
 z_precip2_mm <- fourier(mseries_precip2_mm, K = c(10, 10))
 arima_fit_precip2_mm <- auto.arima(mseries_precip2_mm, xreg = z_precip2_mm, seasonal = FALSE)
 
+# forecast ARIMA model
 zf_precip2_mm <- fourier(mseries_precip2_mm, K = c(10, 10), h = 864)
 arima_forecast_precip2_mm <- forecast(arima_fit_precip2_mm, xreg = zf_precip2_mm, h = 864)
 plot(arima_forecast_precip2_mm)
 
-# need to append this to original the get daily average 
+# put forecast in a data frame with time variable 
 newdat_precip2_mm <- data.frame(  
     time = seq(from = parse_date_time("07-23-2018 00:30", order = "mdy HM"),
                to = parse_date_time("07-31-2018 23:45", order = "mdy HM"), 
                by = "15 min"),
     precip2_mm = arima_forecast_precip2_mm$mean[-c(1:2)]
 )
- 
+
+# need to append forecast to original data to the get daily average 
 arima_precip2_mm <- rbind(dat[, c("time", "precip2_mm")], newdat_precip2_mm)
-    
+
+# create a function for the rolling cumulative sum
+rollsum_3 <- tibbletime::rollify(sum, window = 3)
+
+# create daily averages and cumulative sums over a lagged 3 day window    
 arima_daily_precip2_mm <- arima_precip2_mm %>%
     mutate(day = yday(time),
                    date = date(time),
                    dayofyear = yday(date)) %>%
     group_by(day) %>%
-    summarize_all(mean, na.rm = TRUE)
+    summarize_all(mean, na.rm = TRUE) %>%
+    mutate(precip2_mm_lag = lag(precip2_mm),
+                precip2_mm_cumsum = rollsum_3(precip2_mm_lag))
 
+# save
 save(arima_daily_precip2_mm, file = "data_cleaned/arima_daily_precip2_mm.Rdata")
 
-arima_precip2_mm <- ggplot(arima_daily_precip2_mm, aes(x = day, y = precip2_mm, group = 1)) +
+# plot daily average
+plot_arima_precip2_mm <- ggplot(arima_daily_precip2_mm, aes(x = day, y = precip2_mm_cumsum, group = 1)) +
     geom_line() +
     geom_vline(xintercept = 202, linetype = "dashed", color = "darkred")+
     geom_smooth() +
     theme_classic() 
-ggsave(arima_precip2_mm, file = "results/arima_precip2_mm.pdf", height = 3, width = 7)    
+ggsave(plot_arima_precip2_mm, file = "results/arima_precip2_mm_cumsum.pdf", height = 3, width = 7)    
 

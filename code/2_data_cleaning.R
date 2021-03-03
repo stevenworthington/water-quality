@@ -164,9 +164,9 @@ x4_20_persontrained,
 x5_0_latrineaccess,
 x5_1_a_facilitator,
 x5_2_a_od_fdeclaration,
-tempC_avg,
-precip2_mm,
-relhumid_avg
+tempC_avg_cumsum,
+precip2_mm_cumsum,
+relhumid_avg_cumsum
 )))[-1]
 
 # missingness
@@ -203,12 +203,12 @@ enough_water_response <- "x3_6_enoughwater"
 enough_water_predictors <- "functionalinferred"
 enough_water_vars <- c(enough_water_response, enough_water_predictors, predictor_vars)
 
-# imputation model
-all_vars <- Reduce(union, list(predictor_vars, "functionalinferred", "ttc" , "x3_6_enoughwater")) # 43
+# imputation model (don't impute "x3_3_a_lengthbreakdown")
+all_impute_vars <- Reduce(union, list(predictor_vars, "functionalinferred", "ttc" , "x3_6_enoughwater")) # 43
 
 # save output
 save(dat, 
-        all_vars,
+        all_impute_vars,
         predictor_vars,
         file = "data_cleaned/cleaned_data.Rdata", 
         compress = "gzip")

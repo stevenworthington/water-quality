@@ -129,8 +129,8 @@ newdat_relhumid_avg <- data.frame(
 # need to append forecast to original data to the get daily average 
 arima_relhumid_avg <- rbind(dat[, c("time", "relhumid_avg")], newdat_relhumid_avg)
 
-# create a function for the rolling cumulative sum
-rollsum_3 <- tibbletime::rollify(sum, window = 3)
+# create a function for the rolling mean
+rollmean_7 <- tibbletime::rollify(mean, window = 7)
 
 # create daily averages and cumulative sums over a lagged 3 day window   
 arima_daily_relhumid_avg <- arima_relhumid_avg %>%
@@ -140,18 +140,18 @@ arima_daily_relhumid_avg <- arima_relhumid_avg %>%
     group_by(day) %>%
     summarize_all(mean, na.rm = TRUE) %>%
     mutate(relhumid_avg_lag = lag(relhumid_avg),
-                relhumid_avg_cumsum = rollsum_3(relhumid_avg_lag))
+                relhumid_avg_rollmean = rollmean_7(relhumid_avg_lag))
 
 # save
 save(arima_daily_relhumid_avg, file = "data_cleaned/arima_daily_relhumid_avg.Rdata")
 
 # plot daily average
-plot_arima_relhumid_avg <- ggplot(arima_daily_relhumid_avg, aes(x = day, y = relhumid_avg_cumsum, group = 1)) +
+plot_arima_relhumid_avg <- ggplot(arima_daily_relhumid_avg, aes(x = day, y = relhumid_avg_rollmean, group = 1)) +
     geom_line() +
     geom_vline(xintercept = 202, linetype = "dashed", color = "darkred")+
     geom_smooth() +
     theme_classic() 
-ggsave(plot_arima_relhumid_avg, file = "results/arima_relhumid_avg_cumsum.pdf", height = 3, width = 7)    
+ggsave(plot_arima_relhumid_avg, file = "results/arima_relhumid_avg_rollmean.pdf", height = 3, width = 7)    
 
 
 # -------------------------------------------------------------------------------------------------------
@@ -181,8 +181,8 @@ newdat_tempC_avg <- data.frame(
 # need to append forecast to original data to the get daily average
 arima_tempC_avg <- rbind(dat[, c("time", "tempC_avg")], newdat_tempC_avg)
 
-# create a function for the rolling cumulative sum
-rollsum_3 <- tibbletime::rollify(sum, window = 3)
+# create a function for the rolling mean
+rollmean_7 <- tibbletime::rollify(mean, window = 7)
 
 # create daily averages and cumulative sums over a 3 lagged day window    
 arima_daily_tempC_avg <- arima_tempC_avg %>%
@@ -192,18 +192,18 @@ arima_daily_tempC_avg <- arima_tempC_avg %>%
     group_by(day) %>%
     summarize_all(mean, na.rm = TRUE) %>%
     mutate(tempC_avg_lag = lag(tempC_avg),
-                tempC_avg_cumsum = rollsum_3(tempC_avg_lag))
+                tempC_avg_rollmean = rollmean_7(tempC_avg_lag))
 
 # save
 save(arima_daily_tempC_avg, file = "data_cleaned/arima_daily_tempC_avg.Rdata")
 
 # plot daily average
-plot_arima_tempC_avg <- ggplot(arima_daily_tempC_avg, aes(x = day, y = tempC_avg_cumsum, group = 1)) +
+plot_arima_tempC_avg <- ggplot(arima_daily_tempC_avg, aes(x = day, y = tempC_avg_rollmean, group = 1)) +
     geom_line() +
     geom_vline(xintercept = 202, linetype = "dashed", color = "darkred")+
     geom_smooth() +
     theme_classic() 
-ggsave(plot_arima_tempC_avg, file = "results/arima_tempC_avg_cumsum.pdf", height = 3, width = 7)    
+ggsave(plot_arima_tempC_avg, file = "results/arima_tempC_avg_rollmean.pdf", height = 3, width = 7)    
 
 
 # -------------------------------------------------------------------------------------------------------

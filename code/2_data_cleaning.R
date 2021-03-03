@@ -164,9 +164,9 @@ x4_20_persontrained,
 x5_0_latrineaccess,
 x5_1_a_facilitator,
 x5_2_a_od_fdeclaration,
-tempC_avg_cumsum,
 precip2_mm_cumsum,
-relhumid_avg_cumsum
+tempC_avg_rollmean,
+relhumid_avg_rollmean
 )))[-1]
 
 # missingness
